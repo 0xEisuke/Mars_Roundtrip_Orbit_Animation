@@ -1,6 +1,6 @@
 import io
 import itertools
-from flask import Flask, Response, render_template_string
+from flask import Flask, Response, render_template_string, jsonify
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # 非対話型バックエンド
@@ -43,6 +43,9 @@ dt = 0.01
 missions = []          # 各ミッションは辞書で管理
 next_departure_time = 0  # 次の出発予定時刻
 
+# simulation_info は常に最新の情報を保持するためのグローバル変数
+simulation_info = {"time_days": 0, "time_years": "0.00", "launched": 0, "returned": 0}
+
 # ------------------------------
 # 補助関数
 # ------------------------------
@@ -83,7 +86,7 @@ mars_point,  = ax.plot([], [], [], 'ro', ms=10, label='Mars')
 # アニメーション更新関数
 # ------------------------------
 def animate(frame):
-    global next_departure_time, missions
+    global next_departure_time, missions, simulation_info
     current_time = frame * dt  # 現在時刻（年）
 
     # 地球の位置更新
@@ -165,24 +168,18 @@ def animate(frame):
         mission['history']['x'].append(pos[0])
         mission['history']['y'].append(pos[1])
         mission['history']['z'].append(pos[2])
-        max_history = 150
+        max_history = 30
         for key in ['x', 'y', 'z']:
             if len(mission['history'][key]) > max_history:
                 mission['history'][key] = mission['history'][key][-max_history:]
         mission['path_artist'].set_data(mission['history']['x'], mission['history']['y'])
         mission['path_artist'].set_3d_properties(mission['history']['z'])
 
-    launched_count = len(missions)
-    returned_count = sum(1 for mission in missions if mission.get('finished', False))
-    display_text = (
-        f"Time: {current_time*365:.0f} days / {current_time:.2f} years\n"
-        f"Launched: {launched_count} spacecraft\n"
-        f"Returned: {returned_count} spacecraft"
-    )
-    if hasattr(animate, "time_text"):
-        animate.time_text.set_text(display_text)
-    else:
-        animate.time_text = ax.text2D(0.05, 0.95, display_text, transform=ax.transAxes)
+    # simulation_info の更新（グローバル変数を更新）
+    simulation_info["time_days"] = int(current_time * 365)
+    simulation_info["time_years"] = f"{current_time:.2f}"
+    simulation_info["launched"] = len(missions)
+    simulation_info["returned"] = sum(1 for mission in missions if mission.get('finished', False))
     return []
 
 # ------------------------------
@@ -192,13 +189,13 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    # Tailwind CSS を用いたモダンでスタイリッシュな UI
+    # Tailwind CSS を用いたモダンな UI（JS で /info を定期取得して更新）
     return render_template_string('''
     <!doctype html>
     <html lang="ja">
       <head>
         <meta charset="utf-8">
-        <title>宇宙ミッション シミュレーション</title>
+        <title>Earth ↔ Mars Simulation</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <!-- Tailwind CSS CDN -->
         <script src="https://cdn.tailwindcss.com"></script>
@@ -206,8 +203,8 @@ def index():
       <body class="bg-gray-900 text-gray-100">
         <header class="bg-gradient-to-r from-indigo-600 to-blue-500 py-8 shadow-lg">
           <div class="container mx-auto px-4">
-            <h1 class="text-4xl md:text-5xl font-extrabold text-center">宇宙ミッション シミュレーション</h1>
-            <p class="mt-4 text-center text-lg md:text-xl">地球と火星の往復ミッションをリアルタイムで体感</p>
+            <h1 class="mt-4 text-4xl md:text-5xl font-extrabold text-center">Earth ↔ Mars Continuous Round Trips Simulation</h1>
+            <p class="mt-4 text-center text-lg md:text-xl">Hohmann transfer orbit</p>
           </div>
         </header>
         <main class="container mx-auto px-4 py-12">
@@ -217,21 +214,45 @@ def index():
             </div>
           </div>
           <div class="mt-8 text-center">
-            <p class="text-xl">シミュレーションの進捗情報は上部のグラフにてご確認ください。</p>
+            <p id="sim-info" class="text-xl">
+              Time: 0 days / 0.00 years<br>
+              Launched: 0 spacecraft<br>
+              Returned: 0 spacecraft
+            </p>
           </div>
         </main>
         <footer class="bg-gray-800 py-4">
           <div class="container mx-auto text-center text-sm text-gray-400">
-            &copy; 2025 宇宙ミッションシミュレーション. All rights reserved.
+            &copy; 2025 Earth ↔ Mars Simulation. All rights reserved.
           </div>
         </footer>
+        <script>
+          // 定期的に /info エンドポイントをポーリングして情報を更新
+          setInterval(function(){
+            fetch('/info')
+              .then(response => response.json())
+              .then(data => {
+                document.getElementById('sim-info').innerHTML = 
+                  `Time: ${data.time_days} days / ${data.time_years} years<br>` +
+                  `Launched: ${data.launched} spacecraft<br>` +
+                  `Returned: ${data.returned} spacecraft`;
+              });
+          }, 100); // 0.1秒ごとに更新
+        </script>
       </body>
     </html>
-    ''')
+    ''', time_days=simulation_info.get("time_days", 0), 
+         time_years=simulation_info.get("time_years", "0.00"), 
+         launched=simulation_info.get("launched", 0), 
+         returned=simulation_info.get("returned", 0))
 
 @app.route('/video_feed')
 def video_feed():
     return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/info')
+def info():
+    return jsonify(simulation_info)
 
 def gen():
     for frame in itertools.count():
