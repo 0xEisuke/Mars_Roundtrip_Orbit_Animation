@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Earth-Mars Mission Animation</title>
+  <!-- Tailwind CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+  <div class="container mx-auto p-6">
+    <header class="mb-8 text-center">
+      <h1 class="text-4xl font-bold text-gray-800">Earth ↔ Mars Continuous Round Trips</h1>
+      <p class="text-gray-600 mt-2">Flask &amp; Tailwind CSS を用いたモダンな Web アプリ</p>
+    </header>
+    <main class="flex justify-center">
+      <div class="bg-white shadow-lg rounded-lg p-4">
+        <!-- アニメーション動画を表示 -->
+        {{ video_html | safe }}
+      </div>
+    </main>
+    <footer class="mt-8 text-center text-gray-500">
+      <p>© 2025 Your Name. Built with Flask and Tailwind CSS.</p>
+    </footer>
+  </div>
+</body>
+</html>
