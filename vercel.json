@@ -2,7 +2,7 @@
     "version": 2,
     "builds": [
       {
-        "src": "Mars_Roundtrip_Orbit_Animation_flask.py",
+        "src": "index.py",
         "use": "@vercel/python"
       }
     ],
