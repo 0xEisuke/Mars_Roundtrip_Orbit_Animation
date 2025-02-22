@@ -11,6 +11,12 @@
         "src": "/(.*)",
         "dest": "app.py"
       }
-    ]
+    ],
+    "functions": {
+      "app.py": {
+        "includeFiles": ["templates/**/*", "static/**/*"],
+        "excludeFiles": ["noUse/**/*", "venv/**/*", "__pycache__/**/*", "node_modules/**/*"]
+      }
+    }
   }
   
